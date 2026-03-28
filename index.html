@@ -511,12 +511,19 @@ async function doLogin() {
   if(!u || !p) { setAuthError('Please enter username and password.'); return; }
   const btn = document.querySelector('#authLoginForm .auth-btn');
   btn.textContent = 'Signing in…'; btn.disabled = true;
-  const { error } = await sb.auth.signInWithPassword({ email: usernameToEmail(u), password: p });
-  if(error) {
-    setAuthError(friendlyError(error.message));
+  try {
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000));
+    const loginReq = sb.auth.signInWithPassword({ email: usernameToEmail(u), password: p });
+    const { error } = await Promise.race([loginReq, timeout]);
+    if(error) {
+      setAuthError(friendlyError(error.message));
+      btn.textContent = 'Sign In'; btn.disabled = false;
+    }
+    // onAuthStateChange handles navigation on success
+  } catch(e) {
+    setAuthError(e.message === 'timeout' ? 'Connection timed out. Check your internet and try again.' : 'Something went wrong. Try again.');
     btn.textContent = 'Sign In'; btn.disabled = false;
   }
-  // onAuthStateChange handles navigation on success
 }
 
 async function doRegister() {
